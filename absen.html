@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daftar Hadir</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<header class="top"><div class="top-in"><div class="brand"><span class="logo-box"><img id="logo" alt="" width="34" height="34"></span><div><small data-cfg="INSTANSI"></small><b>Portal Kegiatan</b></div></div><a class="pil" href="index.html">Kembali</a></div></header>
+<main>
+  <h2 class="judul-hal">Isi daftar hadir</h2>
+  <p class="tgl muted"><span data-cfg="KEGIATAN"></span>. Gunakan email yang aktif agar sertifikat mudah diunduh kembali.</p>
+
+  <form class="form" id="f" novalidate>
+    <label for="email">Alamat email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required>
+    <label for="nama">Nama lengkap (sesuai penulisan di sertifikat)</label>
+    <input id="nama" name="nama" type="text" autocomplete="name" required minlength="3" maxlength="100">
+    <label for="wa">Nomor WhatsApp / HP</label>
+    <input id="wa" name="wa" type="tel" inputmode="tel" autocomplete="tel" required>
+    <label for="instansi">Instansi / organisasi</label>
+    <input id="instansi" name="instansi" type="text" autocomplete="organization" required maxlength="120">
+    <p class="kunci" id="kunci" hidden>Formulir terkunci dan akan terbuka otomatis saat kegiatan dimulai.</p>
+    <p class="galat" id="galat" role="alert"></p>
+    <button class="btn" id="kirim" type="submit">Kirim presensi</button>
+  </form>
+</main>
+<footer data-cfg="FOOTER"></footer>
+<dialog id="dlg"><div class="isi"><h2 id="dlgJudul"></h2><div id="dlgIsi"></div><div id="dlgAksi"></div></div></dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const form=$("#f"), kirim=$("#kirim"), galat=$("#galat");
+const kolom=[...form.querySelectorAll("input")];
+
+function cekKunci(){
+  const buka=sudahMulai();
+  kolom.forEach(i=>i.disabled=!buka);
+  kirim.disabled=!buka;
+  $("#kunci").hidden=buka;
+}
+cekKunci(); setInterval(cekKunci,1000);
+
+form.addEventListener("submit", async e=>{
+  e.preventDefault();
+  galat.textContent="";
+  if(!sudahMulai()) return;
+  const d=Object.fromEntries(new FormData(form));
+  Object.keys(d).forEach(k=>d[k]=d[k].trim());
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) return galat.textContent="Alamat email belum benar.";
+  if(d.nama.length<3) return galat.textContent="Nama lengkap minimal 3 karakter.";
+  if(d.wa.replace(/\D/g,"").length<9) return galat.textContent="Nomor WhatsApp belum benar.";
+  if(!d.instansi) return galat.textContent="Instansi wajib diisi.";
+
+  kirim.disabled=true; kirim.textContent="Mengirim…";
+  try{
+    const res=await apiPost({action:"submit",...d});
+    if(res.status==="ok"){
+      form.reset();
+      const box=document.createElement("div");
+      showDialog({judul:"Presensi berhasil disimpan",isi:box,
+        aksi:[{teks:"Kembali ke portal",href:"index.html",sekunder:true}]});
+      const p=document.createElement("p"); p.textContent="Terima kasih, kehadiran Anda telah tercatat. Sertifikat Anda siap diunduh.";
+      box.before(p);
+      tampilkanSertifikat(box,res.nama);
+    }else if(res.status==="duplicate"){
+      showDialog({judul:"Sudah mengisi presensi",
+        isi:"Alamat email ini sudah tercatat. Anda dapat mengunduh sertifikat melalui halaman sertifikat.",
+        aksi:[{teks:"Buka sertifikat",href:"sertifikat.html?email="+encodeURIComponent(d.email)},{teks:"Tutup",sekunder:true}]});
+    }else if(res.status==="locked"){
+      showDialog({judul:"Formulir belum dibuka",isi:"Presensi baru dapat diisi setelah kegiatan dimulai.",aksi:[{teks:"Tutup"}]});
+    }else{
+      throw new Error(res.message||"Kesalahan server");
+    }
+  }catch(err){
+    console.error(err);
+    showDialog({judul:"Data belum tersimpan",isi:"Terjadi kendala saat menghubungi server. Periksa koneksi internet, lalu kirim ulang.",aksi:[{teks:"Tutup dan coba lagi"}]});
+  }finally{
+    kirim.textContent="Kirim presensi"; cekKunci();
+  }
+});
+</script>
+</body></html>

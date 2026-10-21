@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sertifikat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<header class="top"><div class="top-in"><div class="brand"><span class="logo-box"><img id="logo" alt="" width="34" height="34"></span><div><small data-cfg="INSTANSI"></small><b>Portal Kegiatan</b></div></div><a class="pil" href="index.html">Kembali</a></div></header>
+<main>
+  <h2 class="judul-hal">Unduh sertifikat</h2>
+  <p class="tgl muted">Masukkan email yang Anda gunakan saat mengisi daftar hadir.</p>
+  <form class="form" id="f" novalidate>
+    <label for="email">Alamat email</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <p class="galat" id="galat" role="alert"></p>
+    <button class="btn" id="cari" type="submit">Tampilkan sertifikat</button>
+  </form>
+  <div id="hasil" style="margin-top:24px"></div>
+  <p class="koreksi">Nama di sertifikat keliru? <a href="perbaiki.html">Perbaiki data sertifikat</a></p>
+</main>
+<footer data-cfg="FOOTER"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const form=$("#f"), galat=$("#galat"), cari=$("#cari");
+async function proses(){
+  galat.textContent=""; $("#hasil").innerHTML="";
+  const email=$("#email").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return galat.textContent="Alamat email belum benar.";
+  cari.disabled=true; cari.textContent="Mencari…";
+  try{
+    const res=await apiGet({action:"get",email});
+    if(res.status==="ok") await tampilkanSertifikat($("#hasil"),res.nama);
+    else if(res.status==="notfound") galat.textContent="Email belum terdaftar. Pastikan Anda sudah mengisi daftar hadir.";
+    else throw new Error(res.message);
+  }catch(e){ console.error(e); galat.textContent="Gagal menghubungi server. Coba lagi beberapa saat."; }
+  finally{ cari.disabled=false; cari.textContent="Tampilkan sertifikat"; }
+}
+form.addEventListener("submit",e=>{e.preventDefault();proses();});
+const awal=new URLSearchParams(location.search).get("email");
+if(awal){ $("#email").value=awal; proses(); }
+</script>
+</body></html>

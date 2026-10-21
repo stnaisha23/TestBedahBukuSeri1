@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Perbaiki Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<header class="top"><div class="top-in"><div class="brand"><span class="logo-box"><img id="logo" alt="" width="34" height="34"></span><div><small data-cfg="INSTANSI"></small><b>Portal Kegiatan</b></div></div><a class="pil" href="index.html">Kembali</a></div></header>
+<main>
+  <h2 class="judul-hal">Perbaiki nama di sertifikat</h2>
+  <p class="tgl muted">Untuk keamanan, masukkan email dan nomor WhatsApp yang sama dengan saat presensi.</p>
+  <form class="form" id="f" novalidate>
+    <label for="email">Alamat email terdaftar</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <label for="wa">Nomor WhatsApp / HP terdaftar</label>
+    <input id="wa" type="tel" inputmode="tel" required>
+    <label for="nama">Nama lengkap yang benar</label>
+    <input id="nama" type="text" required minlength="3" maxlength="100">
+    <p class="galat" id="galat" role="alert"></p>
+    <button class="btn" id="simpan" type="submit">Simpan perbaikan</button>
+  </form>
+</main>
+<footer data-cfg="FOOTER"></footer>
+<dialog id="dlg"><div class="isi"><h2 id="dlgJudul"></h2><div id="dlgIsi"></div><div id="dlgAksi"></div></div></dialog>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const form=$("#f"), galat=$("#galat"), simpan=$("#simpan");
+form.addEventListener("submit",async e=>{
+  e.preventDefault(); galat.textContent="";
+  const email=$("#email").value.trim(), wa=$("#wa").value.trim(), nama=$("#nama").value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return galat.textContent="Alamat email belum benar.";
+  if(wa.replace(/\D/g,"").length<9) return galat.textContent="Nomor WhatsApp belum benar.";
+  if(nama.length<3) return galat.textContent="Nama lengkap minimal 3 karakter.";
+  simpan.disabled=true; simpan.textContent="Menyimpan…";
+  try{
+    const res=await apiPost({action:"update",email,wa,nama});
+    if(res.status==="ok"){
+      form.reset();
+      showDialog({judul:"Data berhasil diperbaiki",isi:"Nama pada sertifikat telah diperbarui.",
+        aksi:[{teks:"Unduh sertifikat",href:"sertifikat.html?email="+encodeURIComponent(email)},{teks:"Tutup",sekunder:true}]});
+    }else if(res.status==="notfound") galat.textContent="Email belum terdaftar.";
+    else if(res.status==="mismatch") galat.textContent="Nomor WhatsApp tidak sesuai dengan data presensi.";
+    else throw new Error(res.message);
+  }catch(err){ console.error(err); galat.textContent="Gagal menghubungi server. Coba lagi beberapa saat."; }
+  finally{ simpan.disabled=false; simpan.textContent="Simpan perbaikan"; }
+});
+</script>
+</body></html>
